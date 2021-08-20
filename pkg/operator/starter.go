@@ -36,6 +36,7 @@ import (
 	"github.com/mfojtik/bugzilla-operator/pkg/operator/reporters/stalepost"
 	"github.com/mfojtik/bugzilla-operator/pkg/operator/reporters/upcomingsprint"
 	"github.com/mfojtik/bugzilla-operator/pkg/operator/resetcontroller"
+	"github.com/mfojtik/bugzilla-operator/pkg/operator/sharedclustercontroller"
 	"github.com/mfojtik/bugzilla-operator/pkg/operator/stalecontroller"
 	"github.com/mfojtik/bugzilla-operator/pkg/operator/tagcontroller"
 	"github.com/mfojtik/bugzilla-operator/pkg/operator/unfurl"
@@ -108,6 +109,7 @@ func Run(ctx context.Context, cfg config.OperatorConfig) error {
 
 	controllerContext := controller.NewControllerContext(newBugzillaClient(&cfg, slackDebugClient), slackAdminClient, slackDebugClient, slackerInstance, cmClient)
 	controllers := map[string]factory.Controller{
+		"shared-cluster":     sharedclustercontroller.NewSharedClusterController(controllerContext, cfg, recorder),
 		"stale":              stalecontroller.NewStaleController(controllerContext, cfg, recorder),
 		"stale-reset":        resetcontroller.NewResetStaleController(controllerContext, cfg, recorder),
 		"tag":                tagcontroller.NewTagController(controllerContext, cfg, recorder),

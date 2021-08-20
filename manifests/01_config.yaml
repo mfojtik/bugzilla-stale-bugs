@@ -42,6 +42,13 @@ data:
       As such, we're marking this bug as "LifecycleStale" and decreasing the severity/priority.
       If you have further information on the current state of the bug, please update it, otherwise this bug can be closed in about 7 days. The information can be, for example, that the problem still occurs,
       that you still want the feature, that more information is needed, or that the bug is (for whatever reason) no longer relevant.
+    sharedCluster:
+      awsProfile:
+      baseDomain:
+      openShiftDevPubSSHKey:
+      awsSecretAccessKey: base64:
+      awsAccessKeyID: base64:
+      pullSecret: base64:
     groups:
       admins:
       - mfojtik

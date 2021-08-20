@@ -1,0 +1,74 @@
+#!/bin/bash
+
+# This script runs in pod in namespace 'bugzilla-operator'
+# oc is installed in PATH
+# /cache persistent volume mounted
+
+# To run locally: 
+# $ podman run --rm -it quay.io/sallyom/groupb-shared-cluster:4.8 \
+#      -v /path/to/artifacts:${CLUSTER_DIR}:z \
+#      -v /path/to/pullsecret:${PS_PATH}:z \
+#      --env-host=true \
+#      create-cluster
+
+# set in controller w/ os.Setenv from operatorConfig.SharedCluster
+# export AWS_PROFILE="${AWS_PROFILE}"
+# export AWS_SECRET_ACCESS_KEY="${AWS_SECRET_ACCESS_KEY}"
+# export AWS_ACCESS_KEY_ID="${AWS_ACCESS_KEY_ID}"
+# NAME=groupbMMDDHH
+# export CLUSTER_NAME="${NAME}"
+# export CLUSTER_DIR="/cache/groupbclusters/${NAME}"
+# export PS_PATH=/path/pullsecret
+# export BASE_DOMAIN=group-b.devcluster.openshift.com
+# export PUB_SSH_KEY=pubKeyString
+
+# This needs an update every release
+# export LATEST_CI=4.9.0-0.ci
+
+set -x
+RELEASE_IMAGE=$(curl -L -s https://openshift-release.apps.ci.l2s4.p1.openshiftapps.com/api/v1/releasestream/${LATEST_CI}/latest?format=pullSpec)
+# extract installer from latest CI release image
+oc adm release extract -a "${PS_PATH}" --command openshift-install "${RELEASE_IMAGE}"
+mv openshift-install /usr/bin/
+
+set +x
+PULL_SECRET=$(cat "${PS_PATH}")
+cat > "${CLUSTER_DIR}/install-config.yaml" << EOF
+apiVersion: v1
+baseDomain: "${BASE_DOMAIN}"
+compute:
+- architecture: amd64
+  hyperthreading: Enabled
+  name: worker
+  platform:
+    aws:
+      type: m5.xlarge
+  replicas: 3
+controlPlane:
+  architecture: amd64
+  hyperthreading: Enabled
+  name: master
+  platform:{}
+  replicas: 3
+metadata:
+  creationTimestamp: null
+  name: "${CLUSTER_NAME}"
+networking:
+  clusterNetwork:
+  - cidr: 10.128.0.0/14
+    hostPrefix: 23
+  machineNetwork:
+  - cidr: 10.0.0.0/16
+  networkType: OpenShiftSDN
+  serviceNetwork:
+  - 172.30.0.0/16
+platform:
+  aws:
+    region: us-west-1
+publish: External
+pullSecret: $(echo \'"${PULL_SECRET}"\')
+sshKey: $(echo "${PUB_SSH_KEY}")
+EOF
+
+set -x
+openshift-install create cluster --dir="$CLUSTER_DIR"

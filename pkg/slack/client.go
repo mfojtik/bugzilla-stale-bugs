@@ -16,6 +16,9 @@ type ChannelClient interface {
 	PostMessageChannel(options ...slack.MsgOption) (channelID string, ts string, err error)
 	PostMessageAdminChannel(options ...slack.MsgOption) error
 	PostMessageEmail(email string, options ...slack.MsgOption) error
+	PostFileToChannel(message, filepath string) (*slack.ItemRef, error)
+	RemovePinFromChannel(itemRef *slack.ItemRef) error
+}
 }
 
 type slackClient struct {
@@ -86,6 +89,38 @@ func (c *slackClient) PostMessageEmail(email string, options ...slack.MsgOption)
 	}
 	_, _, err = c.client.PostMessage(channel.ID, options...)
 	return err
+}
+
+func (c *slackClient) PostFileToChannel(message string, filepath string) (*slack.ItemRef, error) {
+	if c.debug {
+		message = fmt.Sprintf("DEBUG CHANNEL #%s: %s", c.channel, message)
+	}
+	fileParams := slack.FileUploadParameters{
+		File: filepath,
+		Filename: "kubeconfig",
+		InitialComment: message,
+		Channels: []string{c.channel},
+	}
+
+	file, err := c.client.UploadFile(fileParams)
+	if err != nil {
+		return nil, err
+	}
+	itemRef := slack.NewRefToMessage(c.channel, fmt.Sprint(file.Timestamp))
+	itemRef.Comment = message
+	err = c.client.AddPin(c.channel, slack.ItemRef{Timestamp: fmt.Sprint(file.Timestamp), Channel: c.channel})
+	if err != nil {
+		return nil, err
+	}
+	return &itemRef, nil
+}
+
+func (c *slackClient) RemovePinFromChannel(itemRef *slack.ItemRef) error {
+	err := c.client.RemovePin(c.channel, *itemRef)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func NewChannelClient(client *slack.Client, config *config.OperatorConfig, channel, adminChannel string, debug bool) ChannelClient {

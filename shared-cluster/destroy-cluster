@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# This script runs in pod in namespace 'bugzilla-operator'
+#     oc is installed in PATH
+#     mounted artifacts directory with the cluster files (installer-generated)
+#     AWS creds mounted at $HOME/.aws/credentials as [openshift-group-b] 
+
+# To run locally: 
+# $ podman run --rm quay.io/sallyom/groupb-shared-cluster:4.8 \
+#      -e LATEST_CI=4.8.0-0.ci
+#      -e PS_PATH=path/pull-secret
+#      -e EXPIRE_CLUSTER=<cluster-name>
+#      -e EXPIRE_CLUSTER_DIR=<cluster-dir>
+#      -v /path/to/artifacts:/cache:z \
+#      destroy-cluster
+#
+# This needs an update every release
+#latest=4.8.0-0.ci
+#LATEST="${LATEST_CI}"
+
+NAME="${EXPIRE_CLUSTER}"
+if [ -z "$NAME" ]; then
+  echo "usage: destroy-cluster <cluster-name>"
+  exit 1
+fi
+
+# This directory is from the PV
+if [[ ! -d ${EXPIRE_CLUSTER_DIR} ]]
+then
+    echo "Cluster Directory ${EXPIRE_CLUSTER_DIR} does not exist, could not tear down the cluster."
+    exit 1
+fi
+
+# Can grab any version openshift-install to destroy the cluster
+RELEASE_IMAGE=$(curl -L -s https://openshift-release.apps.ci.l2s4.p1.openshiftapps.com/api/v1/releasestream/${LATEST_CI}/latest?format=pullSpec)
+# extract installer from latest CI release image
+oc adm release extract -a "${PS_PATH}" --command openshift-install "${RELEASE_IMAGE}"
+mv openshift-install /usr/bin/
+set -x
+openshift-install destroy cluster --dir="${EXPIRE_CLUSTER_DIR}"
+rm -rf "${EXPIRE_CLUSTER_DIR}"

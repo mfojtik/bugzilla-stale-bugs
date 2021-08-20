@@ -19,6 +19,15 @@ type Credentials struct {
 	BitlyToken             string `yaml:"bitlyToken"`
 }
 
+type SharedCluster struct {
+	AWSProfile            string
+	AWSSecretAccessKey    string
+	AWSAccessKeyID        string
+	PullSecret            string
+	BaseDomain            string
+	OpenShiftDevPubSSHKey string
+}
+
 type Transition struct {
 	From string `yaml:"from"`
 	To   string `yaml:"to"`
@@ -69,7 +78,8 @@ type AutomaticReport struct {
 }
 
 type OperatorConfig struct {
-	Credentials Credentials `yaml:"credentials"`
+	Credentials   Credentials   `yaml:"credentials"`
+	SharedCluster SharedCluster `yaml:"sharedCluster"`
 
 	StaleBugComment      string `yaml:"staleBugComment"`
 	StaleBugCloseComment string `yaml:"staleBugCloseComment"`
@@ -117,6 +127,16 @@ func (c *OperatorConfig) Anonymize() OperatorConfig {
 	if key := a.Credentials.SlackVerificationToken; len(key) > 0 {
 		a.Credentials.SlackVerificationToken = strings.Repeat("x", len(a.Credentials.DecodedSlackVerificationToken()))
 	}
+	if awsaccesskey := a.SharedCluster.AWSSecretAccessKey; len(awsaccesskey) > 0 {
+		a.SharedCluster.AWSSecretAccessKey = strings.Repeat("x", len(a.SharedCluster.DecodedAWSSecretAccessKey()))
+	}
+	if awskeyid := a.SharedCluster.AWSAccessKeyID; len(awskeyid) > 0 {
+		a.SharedCluster.AWSAccessKeyID = strings.Repeat("x", len(a.SharedCluster.DecodedAWSAccessKeyID()))
+	}
+	if pullSecret := a.SharedCluster.PullSecret; len(pullSecret) > 0 {
+		a.SharedCluster.PullSecret = strings.Repeat("x", len(a.SharedCluster.DecodedPullSecret()))
+	}
+
 	return a
 }
 
@@ -152,6 +172,18 @@ func (b Credentials) DecodedSlackToken() string {
 
 func (b Credentials) DecodedSlackVerificationToken() string {
 	return decode(b.SlackVerificationToken)
+}
+
+func (b SharedCluster) DecodedAWSSecretAccessKey() string {
+	return decode(b.AWSSecretAccessKey)
+}
+
+func (b SharedCluster) DecodedAWSAccessKeyID() string {
+	return decode(b.AWSAccessKeyID)
+}
+
+func (b SharedCluster) DecodedPullSecret() string {
+	return decode(b.PullSecret)
 }
 
 func ExpandGroups(cfg map[string]Group, roots ...string) sets.String {
